@@ -127,16 +127,18 @@ local servers = {
 
 -- Setup each server via lspconfig
 local lspconfig = require("lspconfig")
-lspconfig.sourcekit.setup({})
-lspconfig.sourcekit.setup {
-    capabilities = {
-        workspace = {
-            didChangeWatchedFiles = {
-                dynamicRegistration = true,
-            },
-        },
-    },
-}
+-- lspconfig["copilot"].setup({})
+
+lspconfig.sourcekit.setup({
+	cmd = {
+		"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp",
+	},
+	root_dir = function(filename, _)
+		local util = require("lspconfig.util")
+		return util.root_pattern("*.xcodeproj", "*.xcworkspace")(filename)
+			or util.root_pattern("Package.swift")(filename)
+	end,
+})
 
 for _, server in ipairs(servers) do
 	if lspconfig[server] then
