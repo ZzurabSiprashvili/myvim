@@ -123,35 +123,51 @@ local servers = {
 	"taplo", -- TOML
 	-- Enhanced LSP servers for better code actions
 	"eslint", -- Better ESLint integration for JS/TS
+	"copilot", -- GitHub Copilot
+}
+
+-- Filetypes for each server
+local filetypes_map = {
+	pyright = { "python" },
+	ts_ls = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
+	cssls = { "css", "scss", "less" },
+	html = { "html" },
+	jsonls = { "json", "jsonc" },
+	lua_ls = { "lua" },
+	gopls = { "go" },
+	terraformls = { "terraform", "tf" },
+	yamlls = { "yaml", "yaml.docker-compose" },
+	tailwindcss = { "html", "css", "scss", "javascript", "javascriptreact", "typescript", "typescriptreact", "vue", "svelte", "php", "blade" },
+	sqlls = { "sql" },
+	prismals = { "prisma" },
+	marksman = { "markdown" },
+	taplo = { "toml" },
+	eslint = { "javascript", "javascriptreact", "typescript", "typescriptreact", "vue", "svelte" },
+	copilot = { "python", "javascript", "typescript", "lua", "go", "rust", "java", "c", "cpp" }, -- Add common filetypes for Copilot
 }
 
 -- Setup each server via lspconfig
-local lspconfig = require("lspconfig")
--- lspconfig["copilot"].setup({})
-
-lspconfig.sourcekit.setup({
+vim.lsp.config.sourcekit = {
 	cmd = {
 		"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp",
 	},
-	root_dir = function(filename, _)
-		local util = require("lspconfig.util")
-		return util.root_pattern("*.xcodeproj", "*.xcworkspace")(filename)
-			or util.root_pattern("Package.swift")(filename)
+	filetypes = { "swift", "objective-c", "objective-cpp" },
+	root_dir = function(bufnr, on_dir)
+		local root = vim.fs.root(bufnr, { "*.xcodeproj", "*.xcworkspace", "Package.swift" })
+		on_dir(root)
 	end,
-})
+	capabilities = capabilities,
+}
 
 for _, server in ipairs(servers) do
-	if lspconfig[server] then
-		-- Server-specific configurations
-		local server_opts = {
-			capabilities = capabilities,
-			on_attach = function(client, bufnr)
-				-- optional per-server attach logic can go here
-			end,
-		}
+	-- Server-specific configurations
+	local server_opts = {
+		capabilities = capabilities,
+		filetypes = filetypes_map[server] or {},
+	}
 
-		-- Enhanced configurations for specific servers
-		if server == "pyright" then
+	-- Enhanced configurations for specific servers
+	if server == "pyright" then
 			server_opts.settings = {
 				python = {
 					analysis = {
@@ -211,8 +227,12 @@ for _, server in ipairs(servers) do
 				run = "onType",
 				validate = "on",
 			}
+		elseif server == "copilot" then
+			server_opts.cmd = { "copilot-language-server", "--stdio" }
+			server_opts.root_markers = { ".git" }
 		end
 
-		lspconfig[server].setup(server_opts)
-	end
+		vim.lsp.config[server] = server_opts
 end
+
+vim.lsp.enable(servers)
