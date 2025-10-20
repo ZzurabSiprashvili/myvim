@@ -137,7 +137,19 @@ local filetypes_map = {
 	gopls = { "go" },
 	terraformls = { "terraform", "tf" },
 	yamlls = { "yaml", "yaml.docker-compose" },
-	tailwindcss = { "html", "css", "scss", "javascript", "javascriptreact", "typescript", "typescriptreact", "vue", "svelte", "php", "blade" },
+	tailwindcss = {
+		"html",
+		"css",
+		"scss",
+		"javascript",
+		"javascriptreact",
+		"typescript",
+		"typescriptreact",
+		"vue",
+		"svelte",
+		"php",
+		"blade",
+	},
 	sqlls = { "sql" },
 	prismals = { "prisma" },
 	marksman = { "markdown" },
@@ -145,20 +157,47 @@ local filetypes_map = {
 	eslint = { "javascript", "javascriptreact", "typescript", "typescriptreact", "vue", "svelte" },
 	copilot = { "python", "javascript", "typescript", "lua", "go", "rust", "java", "c", "cpp" }, -- Add common filetypes for Copilot
 }
-
+--
 -- Setup each server via lspconfig
-vim.lsp.config.sourcekit = {
-	cmd = {
-		"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp",
-	},
-	filetypes = { "swift", "objective-c", "objective-cpp" },
-	root_dir = function(bufnr, on_dir)
-		local root = vim.fs.root(bufnr, { "*.xcodeproj", "*.xcworkspace", "Package.swift" })
-		on_dir(root)
-	end,
-	capabilities = capabilities,
-}
-
+-- vim.lsp.config.sourcekit = {
+-- 	cmd = {
+-- 		"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp",
+-- 	},
+-- 	filetypes = { "swift", "objective-c", "objective-cpp" },
+-- 	root_dir = function(filename, _)
+-- 		local util = require("lspconfig.util")
+-- 		return util.root_pattern("*.xcodeproj", "*.xcworkspace")(filename)
+-- 			or util.root_pattern("Package.swift")(filename)
+-- 	end,
+-- 	capabilities = capabilities,
+-- }
+--
+-- vim.api.nvim_create_autocmd("FileType", {
+-- 	pattern = "swift",
+-- 	callback = function()
+-- 		local clients = vim.lsp.get_clients({ bufnr = 0 })
+-- 		for _, c in ipairs(clients) do
+-- 			if c.name == "sourcekit" then
+-- 				return
+-- 			end
+-- 		end
+--
+-- 		vim.lsp.start({
+-- 			name = "sourcekit",
+-- 			cmd = {
+-- 				"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp",
+-- 			},
+-- 			filetypes = { "swift", "objective-c", "objective-cpp" },
+-- 			root_dir = function(filename, _)
+-- 				local util = require("lspconfig.util")
+-- 				return util.root_pattern("*.xcodeproj", "*.xcworkspace")(filename)
+-- 					or util.root_pattern("Package.swift")(filename)
+-- 			end,
+-- 			-- capabilities = capabilities,
+-- 		})
+-- 	end,
+-- })
+--
 for _, server in ipairs(servers) do
 	-- Server-specific configurations
 	local server_opts = {
@@ -168,71 +207,71 @@ for _, server in ipairs(servers) do
 
 	-- Enhanced configurations for specific servers
 	if server == "pyright" then
-			server_opts.settings = {
-				python = {
-					analysis = {
-						typeCheckingMode = "basic",
-						diagnosticMode = "workspace",
-						useLibraryCodeForTypes = true,
-						completeFunctionParens = true,
-						autoSearchPaths = true,
-						extraPaths = {},
-						-- Disable some diagnostics that Ruff handles better
-						diagnosticSeverityOverrides = {
-							reportUnusedImport = "none", -- Ruff handles this
-							reportUnusedVariable = "none", -- Ruff handles this
-							reportMissingImports = "none", -- Ruff handles this
-						},
+		server_opts.settings = {
+			python = {
+				analysis = {
+					typeCheckingMode = "basic",
+					diagnosticMode = "workspace",
+					useLibraryCodeForTypes = true,
+					completeFunctionParens = true,
+					autoSearchPaths = true,
+					extraPaths = {},
+					-- Disable some diagnostics that Ruff handles better
+					diagnosticSeverityOverrides = {
+						reportUnusedImport = "none", -- Ruff handles this
+						reportUnusedVariable = "none", -- Ruff handles this
+						reportMissingImports = "none", -- Ruff handles this
 					},
 				},
-			}
-		elseif server == "ts_ls" then
-			server_opts.settings = {
-				typescript = {
-					format = { enable = false }, -- Let conform handle formatting
-					suggest = { includeCompletionsForModuleExports = true },
+			},
+		}
+	elseif server == "ts_ls" then
+		server_opts.settings = {
+			typescript = {
+				format = { enable = false }, -- Let conform handle formatting
+				suggest = { includeCompletionsForModuleExports = true },
+			},
+			javascript = {
+				format = { enable = false }, -- Let conform handle formatting
+				suggest = { includeCompletionsForModuleExports = true },
+			},
+		}
+	elseif server == "lua_ls" then
+		server_opts.settings = {
+			Lua = {
+				diagnostics = {
+					globals = { "vim" },
 				},
-				javascript = {
-					format = { enable = false }, -- Let conform handle formatting
-					suggest = { includeCompletionsForModuleExports = true },
+				workspace = {
+					library = vim.api.nvim_get_runtime_file("", true),
+					checkThirdParty = false,
 				},
-			}
-		elseif server == "lua_ls" then
-			server_opts.settings = {
-				Lua = {
-					diagnostics = {
-						globals = { "vim" },
-					},
-					workspace = {
-						library = vim.api.nvim_get_runtime_file("", true),
-						checkThirdParty = false,
-					},
-					telemetry = {
-						enable = false,
-					},
+				telemetry = {
+					enable = false,
 				},
-			}
-		elseif server == "eslint" then
-			server_opts.settings = {
-				codeAction = {
-					disableRuleComment = {
-						enable = true,
-						location = "separateLine",
-					},
-					showDocumentation = {
-						enable = true,
-					},
+			},
+		}
+	elseif server == "eslint" then
+		server_opts.settings = {
+			codeAction = {
+				disableRuleComment = {
+					enable = true,
+					location = "separateLine",
 				},
-				format = false, -- Let conform handle formatting
-				run = "onType",
-				validate = "on",
-			}
-		elseif server == "copilot" then
-			server_opts.cmd = { "copilot-language-server", "--stdio" }
-			server_opts.root_markers = { ".git" }
-		end
+				showDocumentation = {
+					enable = true,
+				},
+			},
+			format = false, -- Let conform handle formatting
+			run = "onType",
+			validate = "on",
+		}
+	elseif server == "copilot" then
+		server_opts.cmd = { "copilot-language-server", "--stdio" }
+		server_opts.root_markers = { ".git" }
+	end
 
-		vim.lsp.config[server] = server_opts
+	vim.lsp.config[server] = server_opts
 end
 
 vim.lsp.enable(servers)
